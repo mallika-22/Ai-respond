@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <title>ระบบถามตอบด้วยเสียง (.m4a)</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      text-align: center;
+      padding: 2rem;
+      background: linear-gradient(to bottom, #e0f7fa, #ffffff);
+    }
+
+    h1 {
+      color: #00796b;
+    }
+
+    button {
+      padding: 1rem 2rem;
+      font-size: 1.1rem;
+      border: none;
+      border-radius: 8px;
+      background-color: #00796b;
+      color: white;
+      cursor: pointer;
+      margin: 0.5rem;
+    }
+
+    button:hover {
+      background-color: #004d40;
+    }
+
+    #result {
+      margin-top: 1rem;
+      font-size: 1.2rem;
+      color: #333;
+      white-space: pre-line;
+    }
+
+    #videoContainer {
+      margin-top: 1rem;
+    }
+
+    video {
+      width: 320px;
+      height: auto;
+      border: 2px solid #00796b;
+      border-radius: 10px;
+      margin-top: 0.5rem;
+    }
+
+    #cameraSelect {
+      margin-top: 0.5rem;
+      padding: 0.5rem;
+      font-size: 1rem;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>🎙️ ระบบถามตอบด้วยเสียง + กล้อง</h1>
+
+  <button id="startBtn">🎤 เริ่มพูด</button>
+  <button id="randomBtn">🎲 สุ่มเสียง</button>
+  <button id="toggleSelectBtn">📂 ซ่อน/แสดงตัวเลือกกล้อง</button>
+
+  <div id="result"></div>
+
+  <div id="videoContainer">
+    <select id="cameraSelect"></select><br>
+    <video id="videoPreview" autoplay playsinline muted></video>
+  </div>
+
+  <audio id="audioPlayer" type="audio/mp4"></audio>
+
+  <script>
+    const startBtn = document.getElementById("startBtn");
+    const randomBtn = document.getElementById("randomBtn");
+    const toggleSelectBtn = document.getElementById("toggleSelectBtn");
+    const resultDiv = document.getElementById("result");
+    const audioPlayer = document.getElementById("audioPlayer");
+    const cameraSelect = document.getElementById("cameraSelect");
+    const video = document.getElementById("videoPreview");
+
+    // คำพูดที่มีเสียงเฉพาะ
+    const keywordMap = {
+      "การปล่อยวาง": "ทะเล.m4a",
+      "ทักษิณ": "ภูเขา.m4a",
+      "ฝาก": "น้ำตก.m4a",
+      "น่าน": "น่าน.m4a"
+    };
+
+    // รายชื่อไฟล์ใน random/
+    const randomSounds = [
+      "random/1.m4a",
+      "random/2.m4a",
+      "random/3.m4a"
+    ];
+
+    // Speech Recognition
+    const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+    recognition.lang = "th-TH";
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+
+    startBtn.onclick = () => {
+      resultDiv.textContent = "🎧 กำลังฟัง...";
+      recognition.start();
+    };
+
+    recognition.onresult = (event) => {
+      const transcript = event.results[0][0].transcript;
+      resultDiv.textContent = `คุณพูดว่า: "${transcript}"`;
+
+      let found = false;
+
+      for (const keyword in keywordMap) {
+        if (transcript.includes(keyword)) {
+          audioPlayer.src = keywordMap[keyword];
+          audioPlayer.play();
+          found = true;
+          break;
+        }
+      }
+
+      if (!found && transcript.includes("สอน")) {
+        const randomIndex = Math.floor(Math.random() * randomSounds.length);
+        const randomFile = randomSounds[randomIndex];
+        audioPlayer.src = randomFile;
+        audioPlayer.play();
+        resultDiv.textContent += `\n🔁 เล่นเสียงสุ่มจาก "สอน": ${randomFile}`;
+        found = true;
+      }
+
+      if (!found) {
+        resultDiv.textContent += "\n(ไม่พบคำที่กำหนดไว้)";
+      }
+    };
+
+    recognition.onerror = (event) => {
+      resultDiv.textContent = `❌ เกิดข้อผิดพลาด: ${event.error}`;
+    };
+
+    randomBtn.onclick = () => {
+      const randomIndex = Math.floor(Math.random() * randomSounds.length);
+      const randomFile = randomSounds[randomIndex];
+      audioPlayer.src = randomFile;
+      audioPlayer.play();
+      resultDiv.textContent = `🎲 เล่นเสียงสุ่ม: ${randomFile}`;
+    };
+
+    // ซ่อน/แสดง dropdown กล้อง
+    toggleSelectBtn.onclick = () => {
+      cameraSelect.style.display = (cameraSelect.style.display === "none") ? "inline-block" : "none";
+    };
+
+    // กล้อง
+    async function initCamera() {
+      try {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const videoDevices = devices.filter(device => device.kind === "videoinput");
+
+        cameraSelect.innerHTML = "";
+        videoDevices.forEach((device, index) => {
+          const option = document.createElement("option");
+          option.value = device.deviceId;
+          option.text = device.label || `กล้อง ${index + 1}`;
+          cameraSelect.appendChild(option);
+        });
+
+        if (videoDevices.length > 0) {
+          startCamera(videoDevices[0].deviceId);
+        }
+
+        cameraSelect.onchange = () => {
+          startCamera(cameraSelect.value);
+        };
+      } catch (err) {
+        resultDiv.textContent = "❌ ไม่สามารถเข้าถึงกล้องได้: " + err;
+      }
+    }
+
+    async function startCamera(deviceId) {
+      const constraints = {
+        video: { deviceId: { exact: deviceId } },
+        audio: false
+      };
+
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia(constraints);
+        video.srcObject = stream;
+      } catch (error) {
+        resultDiv.textContent = "❌ ไม่สามารถเปิดกล้องได้: " + error;
+      }
+    }
+
+    // เริ่มต้น
+    initCamera();
+  </script>
+
+</body>
+</html>

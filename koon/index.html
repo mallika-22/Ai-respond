@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <title>ระบบถามตอบด้วยเสียง (.m4a)</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      text-align: center;
+      padding: 3rem;
+      background: linear-gradient(to bottom, #e0f7fa, #ffffff);
+    }
+
+    h1 {
+      color: #00796b;
+    }
+
+    button {
+      padding: 1rem 2rem;
+      font-size: 1.2rem;
+      border: none;
+      border-radius: 8px;
+      background-color: #00796b;
+      color: white;
+      cursor: pointer;
+      margin: 0.5rem;
+    }
+
+    button:hover {
+      background-color: #004d40;
+    }
+
+    #result {
+      margin-top: 1rem;
+      font-size: 1.2rem;
+      color: #333;
+      white-space: pre-line;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>🎙️ ระบบถามตอบด้วยเสียง</h1>
+  <button id="startBtn">🎤 เริ่มพูด</button>
+  <button id="randomBtn">🎲 สุ่มเสียง</button>
+  <div id="result"></div>
+
+  <audio id="audioPlayer" type="audio/mp4"></audio>
+
+  <script>
+    const startBtn = document.getElementById("startBtn");
+    const randomBtn = document.getElementById("randomBtn");
+    const resultDiv = document.getElementById("result");
+    const audioPlayer = document.getElementById("audioPlayer");
+
+    // ✅ คำพูดที่มีหลายคำเชื่อมโยงกับเสียงเดียว
+    const keywordMap = [
+      { keywords: ["การปล่อยวาง","ปล่อยวาง"], file: "A1.m4a" },
+      { keywords: ["ทักษิณ"], file: "A2.m4a" },
+      { keywords: ["ฝาก"], file: "A3.m4a" },
+      { keywords: ["บุญบาป","บาป","บุญ"], file: "A4.m4a" },
+      { keywords: ["ความหลง","อย่าหลง","ชม","ด่า"], file: "A5.m4a" },
+      { keywords: ["สังขาร","ความไม่เที่ยง"], file: "A6.m4a" },
+      { keywords: ["การทำดีทำชั่ว","ความดีความชั่ว","ดี","ชั่ว"], file: "A7.m4a" }
+    ];
+
+    const randomSounds = [
+      "random/1.m4a",
+      "random/2.m4a",
+      "random/3.m4a"
+    ];
+
+    const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+    recognition.lang = "th-TH";
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+
+    startBtn.onclick = () => {
+      resultDiv.textContent = "🎧 กำลังฟัง...";
+      recognition.start();
+    };
+
+    recognition.onresult = (event) => {
+      const transcript = event.results[0][0].transcript;
+      resultDiv.textContent = `"${transcript}"`;
+
+      let found = false;
+
+      for (const entry of keywordMap) {
+        for (const keyword of entry.keywords) {
+          if (transcript.includes(keyword)) {
+            audioPlayer.src = entry.file;
+            audioPlayer.play();
+            resultDiv.textContent += ``;
+            found = true;
+            break;
+          }
+        }
+        if (found) break;
+      }
+
+      if (!found && transcript.includes("หลักธรรม")) {
+        const randomIndex = Math.floor(Math.random() * randomSounds.length);
+        const randomFile = randomSounds[randomIndex];
+        audioPlayer.src = randomFile;
+        audioPlayer.play();
+        resultDiv.textContent += ``;
+        found = true;
+      }
+
+      if (!found) {
+        resultDiv.textContent += "\n(ไม่พบคำที่กำหนดไว้)";
+      }
+    };
+
+    recognition.onerror = (event) => {
+      resultDiv.textContent = `❌ เกิดข้อผิดพลาด: ${event.error}`;
+    };
+
+    randomBtn.onclick = () => {
+      const randomIndex = Math.floor(Math.random() * randomSounds.length);
+      const randomFile = randomSounds[randomIndex];
+      audioPlayer.src = randomFile;
+      audioPlayer.play();
+      resultDiv.textContent = `🎲 เล่นเสียงสุ่ม: ${randomFile}`;
+    };
+  </script>
+
+</body>
+</html>
